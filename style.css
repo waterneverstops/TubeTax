@@ -1,0 +1,19 @@
+#yt-time-cost-overlay {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #e6f7ff;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+#player-container,
+#full-bleed-container,
+.html5-video-player {
+  position: relative !important;
+}
