@@ -2,7 +2,6 @@ const OVERLAY_ID = "yt-time-cost-overlay";
 let hourlyRate = null;
 let lastVideoId = null;
 
-// === helpers ===
 const fmtUSD = (a) =>
   a.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
@@ -18,18 +17,10 @@ function parseDurationToSeconds(txt) {
 }
 
 function computeCost(sec) {
-  if (!hourlyRate || !sec) return null;
-  return (hourlyRate * sec) / 3600;
+  return hourlyRate && sec ? (hourlyRate * sec) / 3600 : null;
 }
 
-function loadRate(cb) {
-  chrome.storage.sync.get("hourlyRate", (data) => {
-    hourlyRate = data?.hourlyRate ?? null;
-    cb && cb();
-  });
-}
-
-// === player overlay ===
+// === Player overlay ===
 function ensurePlayerOverlay() {
   let el = document.getElementById(OVERLAY_ID);
   if (!el) {
@@ -52,7 +43,7 @@ function ensurePlayerOverlay() {
       document.querySelector("#movie_player") ||
       document.querySelector(".html5-video-player") ||
       document.body;
-    container.appendChild(el);
+    container?.appendChild(el);
   }
   return el;
 }
@@ -63,21 +54,23 @@ function updatePlayerOverlay() {
     document.querySelector("video");
   if (!video || !hourlyRate || !isFinite(video.duration) || video.duration <= 0)
     return;
+
   const cost = computeCost(video.duration);
   const el = ensurePlayerOverlay();
   el.textContent = `💰 ${fmtUSD(cost)} total`;
 }
 
-// === watch for changes ===
-function handleWatchPage() {
+// === Video detection ===
+function updatePlayerIfVideoChanged() {
   const url = new URL(location.href);
   const vid = url.searchParams.get("v");
   if (location.pathname === "/watch" && vid && vid !== lastVideoId) {
     lastVideoId = vid;
-    setTimeout(updatePlayerOverlay, 2000);
+    setTimeout(updatePlayerOverlay, 1500);
   }
 }
 
+// === Thumbnails ===
 function updateThumbnails() {
   if (!hourlyRate) return;
 
@@ -86,39 +79,29 @@ function updateThumbnails() {
   );
 
   for (const card of cards) {
-    // Пропускаем Shorts
-    if (card.closest("ytd-reel-shelf-renderer")) continue;
-
-    // Уже добавлен бейдж
+    if (card.closest("ytd-reel-shelf-renderer")) continue; // skip Shorts
     if (card.querySelector(".yt-time-cost-thumb")) continue;
 
-    // --- ищем длительность в новой структуре YouTube ---
     const timeEl = card.querySelector(
       "yt-thumbnail-overlay-badge-view-model badge-shape .yt-badge-shape__text"
     );
     if (!timeEl) continue;
 
     const text = timeEl.textContent?.trim();
-    if (!text) continue;
-
     const seconds = parseDurationToSeconds(text);
     const cost = computeCost(seconds);
     if (!cost) continue;
 
-    // --- находим контейнер превью ---
     const thumb =
       card.querySelector("yt-thumbnail-view-model") ||
       card.querySelector("ytd-thumbnail") ||
       card.querySelector("a#thumbnail");
     if (!thumb) continue;
-
     thumb.style.position = "relative";
 
-    // --- создаём бейдж ---
     const badge = document.createElement("div");
     badge.className = "yt-time-cost-thumb";
     badge.textContent = `💰 ${fmtUSD(cost)}`;
-
     Object.assign(badge.style, {
       position: "absolute",
       left: "4px",
@@ -140,18 +123,7 @@ function updateThumbnails() {
   }
 }
 
-// === постоянный опрос, чтобы поймать ленивую подгрузку ===
-setInterval(updateThumbnails, 2000);
-
-// === listen for changes ===
-chrome.runtime.onMessage.addListener((msg) => {
-  if (msg?.type === "RATE_UPDATED") {
-    loadRate(() => {
-      updateThumbnails();
-      updatePlayerOverlay();
-    });
-  }
-});
+// === Reactivity ===
 chrome.storage.onChanged.addListener((ch, area) => {
   if (area === "sync" && "hourlyRate" in ch) {
     hourlyRate = ch.hourlyRate.newValue ?? null;
@@ -160,42 +132,32 @@ chrome.storage.onChanged.addListener((ch, area) => {
   }
 });
 
-// === init ===
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.type === "RATE_UPDATED") {
+    chrome.storage.sync.get("hourlyRate", (data) => {
+      hourlyRate = data?.hourlyRate ?? null;
+      updateThumbnails();
+      updatePlayerOverlay();
+    });
+  }
+});
+
+// === Init ===
 (function init() {
-  // 1. Загружаем ставку
   chrome.storage.sync.get("hourlyRate", (data) => {
     hourlyRate = data?.hourlyRate ?? null;
-
-    // 2. Если ставки нет — просто ждём, пока пользователь её задаст
-    if (!hourlyRate) {
-      console.log("[YT Time Cost] Hourly rate not set yet, waiting...");
-      // слушаем, когда ставка появится
-      chrome.storage.onChanged.addListener((changes, area) => {
-        if (area === "sync" && "hourlyRate" in changes) {
-          hourlyRate = changes.hourlyRate.newValue ?? null;
-          if (hourlyRate) {
-            console.log("[YT Time Cost] Hourly rate loaded later:", hourlyRate);
-            updateThumbnails();
-            updatePlayerOverlay();
-          }
-        }
-      });
-      return;
-    }
-
-    // 3. Если ставка есть — сразу всё запускаем
     console.log("[YT Time Cost] Loaded hourly rate:", hourlyRate);
-    updateThumbnails();
-    handleWatchPage();
 
-    // 4. Следим за изменениями страницы
+    // Start observing page
+    updateThumbnails();
+    updatePlayerIfVideoChanged();
+
     const obs = new MutationObserver(() => {
       updateThumbnails();
-      handleWatchPage();
+      updatePlayerIfVideoChanged();
     });
     obs.observe(document.documentElement, { childList: true, subtree: true });
 
-    // 5. Фоновая проверка для ленивых карточек
     setInterval(updateThumbnails, 2000);
   });
 })();
