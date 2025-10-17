@@ -86,48 +86,57 @@ function updateThumbnails() {
   );
 
   for (const card of cards) {
-    // если уже есть бейдж — пропускаем
+    // Пропускаем Shorts
+    if (card.closest("ytd-reel-shelf-renderer")) continue;
+
+    // Уже добавлен бейдж
     if (card.querySelector(".yt-time-cost-thumb")) continue;
 
-    // пытаемся достать длительность
-    const timeEl =
-      card.querySelector("ytd-thumbnail-overlay-time-status-renderer") ||
-      card.querySelector(".ytd-thumbnail-overlay-time-status-renderer") ||
-      card.querySelector(
-        "span#text.ytd-thumbnail-overlay-time-status-renderer"
-      );
+    // --- ищем длительность в новой структуре YouTube ---
+    const timeEl = card.querySelector(
+      "yt-thumbnail-overlay-badge-view-model badge-shape .yt-badge-shape__text"
+    );
     if (!timeEl) continue;
 
-    const text =
-      timeEl.getAttribute("aria-label") || timeEl.textContent?.trim() || "";
+    const text = timeEl.textContent?.trim();
+    if (!text) continue;
+
     const seconds = parseDurationToSeconds(text);
     const cost = computeCost(seconds);
     if (!cost) continue;
 
-    // ищем превью (thumbnail)
+    // --- находим контейнер превью ---
     const thumb =
-      card.querySelector("ytd-thumbnail") || card.querySelector("a#thumbnail");
+      card.querySelector("yt-thumbnail-view-model") ||
+      card.querySelector("ytd-thumbnail") ||
+      card.querySelector("a#thumbnail");
     if (!thumb) continue;
+
     thumb.style.position = "relative";
 
-    // создаём бейдж
+    // --- создаём бейдж ---
     const badge = document.createElement("div");
     badge.className = "yt-time-cost-thumb";
+    badge.textContent = `💰 ${fmtUSD(cost)}`;
+
     Object.assign(badge.style, {
       position: "absolute",
       right: "4px",
       bottom: "4px",
-      background: "rgba(0,0,0,0.7)",
+      background: "rgba(0,0,0,0.85)",
       color: "#fff",
       fontSize: "12px",
       padding: "2px 4px",
       borderRadius: "3px",
       pointerEvents: "none",
-      zIndex: "50",
+      zIndex: "9999",
       whiteSpace: "nowrap",
+      opacity: "0",
+      transition: "opacity 0.3s ease",
     });
-    badge.textContent = `💰 ${fmtUSD(cost)}`;
+
     thumb.appendChild(badge);
+    requestAnimationFrame(() => (badge.style.opacity = "1"));
   }
 }
 
