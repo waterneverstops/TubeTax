@@ -19,3 +19,4 @@ TODO:
 - Add Icon
 - Fix invalid price estimations for playlists
 - Calculate cost for session of shorts
+- Fix broken view in channel
