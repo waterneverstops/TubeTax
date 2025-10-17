@@ -35,10 +35,10 @@ document
 
 document.getElementById("fill").addEventListener("click", () => {
   rateInput.value = 5;
-  save(20);
+  save(5);
 });
 
 document.getElementById("fill2").addEventListener("click", () => {
   rateInput.value = 20;
-  save(50);
+  save(20);
 });
