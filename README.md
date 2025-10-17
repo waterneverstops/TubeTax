@@ -17,4 +17,5 @@ TODO:
 
 - Update price for thumbnails
 - Add Icon
-- Fix invalid price estimations for streams
+- Fix invalid price estimations for playlists
+- Calculate cost for session of shorts
