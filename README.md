@@ -12,3 +12,9 @@ Based on your hourly rate, it calculates the monetary cost of watching each vide
 🔄 Automatically updates as you scroll or navigate between pages.
 
 ⚙️ Uses your saved hourly rate from the extension popup.
+
+TODO:
+
+- Update price for thumbnails
+- Add Icon
+- Fix invalid price estimations for streams
