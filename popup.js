@@ -34,11 +34,11 @@ document
   .addEventListener("click", () => save(rateInput.value));
 
 document.getElementById("fill").addEventListener("click", () => {
-  rateInput.value = 20;
+  rateInput.value = 5;
   save(20);
 });
 
 document.getElementById("fill2").addEventListener("click", () => {
-  rateInput.value = 50;
+  rateInput.value = 20;
   save(50);
 });
