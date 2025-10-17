@@ -121,7 +121,7 @@ function updateThumbnails() {
 
     Object.assign(badge.style, {
       position: "absolute",
-      right: "4px",
+      left: "4px",
       bottom: "4px",
       background: "rgba(0,0,0,0.85)",
       color: "#fff",
